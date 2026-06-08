@@ -1,3 +1,7 @@
+# Copyright © 2026 TileBio Ltd.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Licensed for non-commercial research use only. See the LICENSE file
+# at the repository root for the full terms.
 """Helpers for parsing iSyntax XML header values into typed fields."""
 
 import re

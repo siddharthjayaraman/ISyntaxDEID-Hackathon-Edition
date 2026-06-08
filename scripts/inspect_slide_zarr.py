@@ -1,3 +1,7 @@
+# Copyright © 2026 TileBio Ltd.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Licensed for non-commercial research use only. See the LICENSE file
+# at the repository root for the full terms.
 """Verification helper: read a slide zarr.zip and inspect its contents.
 
 Usage::

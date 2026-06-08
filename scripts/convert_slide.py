@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# Copyright © 2026 TileBio Ltd.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Licensed for non-commercial research use only. See the LICENSE file
+# at the repository root for the full terms.
 """Convert a single local .isyntax slide into a de-identified {id}.zarr.zip.
 
     PYTHONPATH=src python scripts/convert_slide.py /path/to/slide.isyntax

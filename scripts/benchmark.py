@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# Copyright © 2026 TileBio Ltd.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Licensed for non-commercial research use only. See the LICENSE file
+# at the repository root for the full terms.
 """Benchmark the per-slide iSyntax -> zarr.zip conversion.
 
 This is the number the hackathon is about: wall-clock seconds to convert one

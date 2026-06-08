@@ -1,3 +1,7 @@
+# Copyright © 2026 TileBio Ltd.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Licensed for non-commercial research use only. See the LICENSE file
+# at the repository root for the full terms.
 """Fixed-MPP thumbnail extraction for iSyntax WSIs.
 
 Thumbnails must be produced at a consistent microns-per-pixel scale — not a magnification label — because

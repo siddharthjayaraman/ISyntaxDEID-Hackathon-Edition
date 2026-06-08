@@ -172,4 +172,16 @@ scripts/
   benchmark.py           time the conversion (the hackathon metric)
   inspect_slide_zarr.py  inspect / validate a produced .zarr.zip
 ```
-# ISyntaxDEID-Hackathon-Edition
+
+## License
+
+Copyright © 2026 TileBio Ltd.
+
+This software is licensed for **non-commercial research use only**, under the
+[PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use requires a
+separate licence from TileBio Ltd.
+
+The vendored `tile_pyisyntax` wrapper and bundled `libisyntax` library under
+`src/tile_pyisyntax/` are third-party components, not covered by the TileBio Ltd
+copyright — `libisyntax` is distributed under its own terms by the
+[amspath/libisyntax](https://github.com/amspath/libisyntax) project.

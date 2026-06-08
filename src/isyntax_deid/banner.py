@@ -1,3 +1,7 @@
+# Copyright © 2026 TileBio Ltd.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Licensed for non-commercial research use only. See the LICENSE file
+# at the repository root for the full terms.
 """ASCII-art startup banner for the ISyntaxDEID hackathon.
 
 The logo mirrors the project's tile mark: a grid of tiles with a "T" picked

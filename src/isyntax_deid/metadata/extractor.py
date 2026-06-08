@@ -1,3 +1,7 @@
+# Copyright © 2026 TileBio Ltd.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Licensed for non-commercial research use only. See the LICENSE file
+# at the repository root for the full terms.
 """Per-file metadata extraction from iSyntax files.
 
 This module is DB-free so it can be called in parallel worker processes.

@@ -1,3 +1,7 @@
+# Copyright © 2026 TileBio Ltd.
+# SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+# Licensed for non-commercial research use only. See the LICENSE file
+# at the repository root for the full terms.
 """Export de-identified WSI tissue pixels + coordinates to a sparse zarr v2 zip.
 
 Sparse full-slide layout: one array covers the whole level-0 canvas,
