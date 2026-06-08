@@ -1,0 +1,44 @@
+# Conda environment for the barebones ISyntaxDEID hackathon build.
+#
+# Slimmed down to the local-conversion path only: no OCR stack and no Azure
+# tooling. Versions are pinned to the validated dev environment so the binary
+# ABI seen by extension modules is identical.
+#
+# Create / update:
+#     conda env create -f environment.yml
+#     conda activate isyntax-deid
+#
+# The libisyntax wrapper (tile_pyisyntax) and the native libisyntax library are
+# vendored under src/tile_pyisyntax/ — no install step here. See the README for
+# rebuilding libisyntax on arm64 / non-amd64 platforms.
+
+name: isyntax-deid
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12.3
+
+  # --- Conda layer ------------------------------------------------------
+  # NOTE: OpenCV is intentionally NOT taken from conda-forge here. That build
+  # links its `text` contrib module against Tesseract, so `conda install opencv`
+  # drags in tesseract as a transitive dependency. We use the self-contained
+  # `opencv-python-headless` pip wheel instead (no tesseract, no GUI/Qt libs).
+  - numpy=2.4.4
+  - pydantic=2.13.2
+
+  - pip
+  - pip:
+      # --- Pip layer (pinned) -------------------------------------------
+      - opencv-python-headless==4.13.0.92
+      - cysignals==1.12.6
+      - donfig==0.8.1.post1
+      - google-crc32c==1.8.0
+      - imagecodecs==2026.3.6
+      - numcodecs==0.16.5
+      - pandas==3.0.2
+      - pillow==12.2.0
+      - python-dateutil==2.9.0.post0
+      - six==1.17.0
+      - tqdm==4.67.3
+      - zarr==3.1.6
