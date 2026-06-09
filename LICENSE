@@ -86,8 +86,10 @@ The **licensor** is the individual or entity offering these terms, and the **sof
 
 NOTE ON THIRD-PARTY COMPONENTS
 
-The vendored `tile_pyisyntax` wrapper and the bundled `libisyntax` native
-library under `src/tile_pyisyntax/` are third-party components and are NOT
-covered by the TileBio Ltd copyright above. `libisyntax` is distributed under
-its own licence by the amspath/libisyntax project
+The `tile_pyisyntax` Python wrapper under `src/tile_pyisyntax/` is TileBio Ltd's
+own work and IS covered by the copyright and licence above.
+
+The native library it loads, `src/tile_pyisyntax/libisyntax.so`, is a separate
+third-party component and is NOT covered by the TileBio Ltd copyright. It is
+distributed under its own licence by the amspath/libisyntax project
 (<https://github.com/amspath/libisyntax>); refer to that project for its terms.

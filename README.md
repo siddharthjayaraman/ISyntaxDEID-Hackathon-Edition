@@ -181,7 +181,8 @@ This software is licensed for **non-commercial research use only**, under the
 [PolyForm Noncommercial License 1.0.0](LICENSE). Commercial use requires a
 separate licence from TileBio Ltd.
 
-The vendored `tile_pyisyntax` wrapper and bundled `libisyntax` library under
-`src/tile_pyisyntax/` are third-party components, not covered by the TileBio Ltd
-copyright — `libisyntax` is distributed under its own terms by the
+The `tile_pyisyntax` Python wrapper under `src/tile_pyisyntax/` is TileBio Ltd's
+own work and is covered by the licence above. The native library it loads
+(`src/tile_pyisyntax/libisyntax.so`) is a separate third-party component
+distributed under its own terms by the
 [amspath/libisyntax](https://github.com/amspath/libisyntax) project.
