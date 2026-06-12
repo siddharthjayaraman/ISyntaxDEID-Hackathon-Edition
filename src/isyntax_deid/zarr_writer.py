@@ -23,9 +23,11 @@ Finally, the whole directory is packed into a single
 from __future__ import annotations
 
 import atexit
+import json
 import multiprocessing
 import os
 import shutil
+import time
 import zipfile
 from pathlib import Path
 from typing import Optional
@@ -81,6 +83,33 @@ def _make_pixel_compressor(
 	)
 
 
+
+def _profile_event(profile_dir: Optional[Path | str], name: str, seconds: float, **fields) -> None:
+	if profile_dir is None:
+		return
+
+	profile_path = Path(profile_dir)
+	profile_path.mkdir(parents=True, exist_ok=True)
+
+	event = {
+		"name": name,
+		"seconds": float(seconds),
+		"pid": os.getpid(),
+	}
+	event.update(fields)
+
+	with (profile_path / f"zarr_profile_events.{os.getpid()}.jsonl").open("a") as handle:
+		handle.write(json.dumps(event, sort_keys=True) + "\n")
+
+
+def _profile_call(profile_dir: Optional[Path | str], name: str, func, *args, **kwargs):
+	t0 = time.perf_counter()
+	try:
+		return func(*args, **kwargs)
+	finally:
+		_profile_event(profile_dir, name, time.perf_counter() - t0)
+
+
 def write_slide_zarr(
 	slide_metadata: MapFileEntry,
 	candidate_coords: np.ndarray,
@@ -97,6 +126,7 @@ def write_slide_zarr(
 	n_workers: int = 8,
 	scratch_dir: Optional[Path] = None,
 	manual_slide_path: Optional[Path] = None,
+	profile_dir: Optional[Path] = None,
 ) -> Path:
 	"""Write tissue pixels into a sparse zarr-v2 zip with parallel encode."""
 	
@@ -130,6 +160,9 @@ def write_slide_zarr(
 
 	scratch_dir = Path(scratch_dir) if scratch_dir is not None else output_dir
 	scratch_dir.mkdir(parents=True, exist_ok=True)
+	profile_dir = Path(profile_dir) if profile_dir is not None else None
+	if profile_dir is not None:
+		profile_dir.mkdir(parents=True, exist_ok=True)
 
 	if n_workers is None:
 		n_workers = os.cpu_count() or 1
@@ -169,8 +202,11 @@ def write_slide_zarr(
 
 	try:
 		# 1. Main process creates the Zarr arrays and `.zarray` metadata
-		store = zarr.storage.LocalStore(str(scratch_root))
-		_populate_group_metadata(
+		store = _profile_call(profile_dir, "store.create_local", zarr.storage.LocalStore, str(scratch_root))
+		_profile_call(
+			profile_dir,
+			"metadata.populate_group",
+			_populate_group_metadata,
 			store=store,
 			slide_metadata=slide_metadata,
 			candidate_coords=candidate_coords,
@@ -190,21 +226,25 @@ def write_slide_zarr(
 		)
 
 		# 2. Fan out pixel encode across worker processes
-		_write_pixels_parallel(
+		_profile_call(
+			profile_dir,
+			"pixels.write_parallel_total",
+			_write_pixels_parallel,
 			slide_path=str(slide_path),
 			scratch_root=str(scratch_root),
 			tile_coords=tile_coords,
 			tile_size=tile_size,
 			n_workers=n_workers,
+			profile_dir=profile_dir,
 		)
 
 		# 3. Pack directory into a single zip
-		_zip_directory(scratch_root, tmp_zip)
+		_profile_call(profile_dir, "zip.directory", _zip_directory, scratch_root, tmp_zip)
 
 		# 4. Atomic rename (os.replace is atomic on POSIX even when the
 		# destination exists — unlike unlink+rename, which leaves a
 		# window where the final path is missing).
-		os.replace(tmp_zip, final_path)
+		_profile_call(profile_dir, "output.atomic_replace", os.replace, tmp_zip, final_path)
 
 	except BaseException:
 		if tmp_zip.exists():
@@ -212,7 +252,9 @@ def write_slide_zarr(
 			except OSError: pass
 		raise
 
-	shutil.rmtree(scratch_root, ignore_errors=True)
+	_profile_call(profile_dir, "cleanup.scratch_rmtree", shutil.rmtree, scratch_root, ignore_errors=True)
+	if profile_dir is not None:
+		_profile_event(profile_dir, "output.final_size", 0.0, bytes=final_path.stat().st_size if final_path.exists() else 0)
 	return final_path
 
 
@@ -346,24 +388,32 @@ _WORKER_WSI = None
 _WORKER_WSI_CM = None
 _WORKER_ZARR_PIXELS = None
 _WORKER_TILE_SIZE = None
+_WORKER_PROFILE_DIR = None
 
 def _worker_init(
 	slide_path: str,
 	scratch_root: str,
 	tile_size: int,
+	profile_dir: Optional[str] = None,
 ) -> None:
-	global _WORKER_WSI, _WORKER_WSI_CM, _WORKER_ZARR_PIXELS, _WORKER_TILE_SIZE
+	global _WORKER_WSI, _WORKER_WSI_CM, _WORKER_ZARR_PIXELS, _WORKER_TILE_SIZE, _WORKER_PROFILE_DIR
 
 	from tile_pyisyntax import ISyntaxWSI
 
+	_WORKER_PROFILE_DIR = profile_dir
+
+	t0 = time.perf_counter()
 	_WORKER_WSI_CM = ISyntaxWSI(slide_path)
 	_WORKER_WSI = _WORKER_WSI_CM.__enter__()
+	_profile_event(_WORKER_PROFILE_DIR, "worker.open_isyntax", time.perf_counter() - t0)
 
 	# Open the Zarr array initialized by the main process.
-	# Zarr reads the metadata and reconstructs the JPEG XL compressor automatically.
+	# Zarr reads the metadata and reconstructs the compressor automatically.
+	t0 = time.perf_counter()
 	store = zarr.storage.LocalStore(scratch_root)
 	root = zarr.open_group(store=store, mode='r+')
 	_WORKER_ZARR_PIXELS = root["pixels"]
+	_profile_event(_WORKER_PROFILE_DIR, "worker.open_zarr_pixels", time.perf_counter() - t0)
 	
 	_WORKER_TILE_SIZE = int(tile_size)
 
@@ -383,16 +433,20 @@ def _worker_encode_tile(coord) -> None:
 	x, y = int(coord[0]), int(coord[1])
 	ts = _WORKER_TILE_SIZE
 
-	# Read and slice alpha
+	t0 = time.perf_counter()
 	region = _WORKER_WSI.read_region(0, x, y, ts, ts)
+	_profile_event(_WORKER_PROFILE_DIR, "tile.read_region", time.perf_counter() - t0)
+
+	t0 = time.perf_counter()
 	rgb = np.ascontiguousarray(region[:, :, :3])
+	_profile_event(_WORKER_PROFILE_DIR, "tile.rgba_to_rgb_contiguous", time.perf_counter() - t0)
 
 	# Assign directly to the Zarr array.
-	# Because x and y are perfect multiples of tile_size, Zarr will intercept this,
-	# pass `rgb` to the Jpegxl compressor, and write exactly one chunk file to disk.
+	# Because x and y are perfect multiples of tile_size, Zarr writes exactly one chunk.
+	t0 = time.perf_counter()
 	_WORKER_ZARR_PIXELS[y:y+ts, x:x+ts, :] = rgb
+	_profile_event(_WORKER_PROFILE_DIR, "tile.zarr_assignment", time.perf_counter() - t0)
 
-	# Force immediate garbage collection
 	del region, rgb
 
 
@@ -403,6 +457,7 @@ def _write_pixels_parallel(
 	tile_coords: np.ndarray,
 	tile_size: int,
 	n_workers: int,
+	profile_dir: Optional[Path] = None,
 ) -> None:
 	n_tasks = tile_coords.shape[0]
 	if n_tasks == 0:
@@ -417,7 +472,7 @@ def _write_pixels_parallel(
 		processes=n_workers,
 		initializer=_worker_init,
 		# Note: Removed jpegxl_effort and distance as Zarr handles it intrinsically now
-		initargs=(slide_path, scratch_root, tile_size),
+		initargs=(slide_path, scratch_root, tile_size, str(profile_dir) if profile_dir is not None else None),
 		maxtasksperchild=None,
 	) as pool:
 		for _ in pool.imap_unordered(_worker_encode_tile, task_gen, chunksize=chunksize):
