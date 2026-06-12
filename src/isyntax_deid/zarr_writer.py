@@ -39,11 +39,47 @@ import imagecodecs.numcodecs as _imagecodecs_numcodecs
 _imagecodecs_numcodecs.register_codecs()
 
 from imagecodecs.numcodecs import Jpegxl  # noqa: E402 — must come after register
+from numcodecs import Blosc
 from isyntax_deid.metadata.schemas import MapFileEntry
 
 ZARR_SCHEMA_VERSION = "2.0"
 FILL_VALUE: int = 255
 _MP_START_METHOD = "spawn"
+
+def _make_pixel_compressor(
+	pixel_codec: str,
+	*,
+	jpegxl_distance: float,
+	jpegxl_effort: int,
+):
+	if pixel_codec == "jpegxl":
+		return Jpegxl(
+			distance=jpegxl_distance,
+			effort=jpegxl_effort,
+			lossless=False,
+		)
+
+	if pixel_codec == "raw":
+		return None
+
+	if pixel_codec == "blosc_lz4":
+		return Blosc(
+			cname="lz4",
+			clevel=1,
+			shuffle=Blosc.SHUFFLE,
+		)
+
+	if pixel_codec == "blosc_zstd":
+		return Blosc(
+			cname="zstd",
+			clevel=1,
+			shuffle=Blosc.SHUFFLE,
+		)
+
+	raise ValueError(
+		"pixel_codec must be one of: jpegxl, raw, blosc_lz4, blosc_zstd"
+	)
+
 
 def write_slide_zarr(
 	slide_metadata: MapFileEntry,
@@ -56,7 +92,8 @@ def write_slide_zarr(
 	*,
 	tile_size: int = 224,
 	jpegxl_distance: float = 1.0,
-	jpegxl_effort: int = 5,
+	jpegxl_effort: int = 3,
+	pixel_codec: str = "jpegxl",
 	n_workers: int = 8,
 	scratch_dir: Optional[Path] = None,
 	manual_slide_path: Optional[Path] = None,
@@ -146,6 +183,7 @@ def write_slide_zarr(
 			tile_size=tile_size,
 			jpegxl_distance=jpegxl_distance,
 			jpegxl_effort=jpegxl_effort,
+			pixel_codec=pixel_codec,
 			n_total=n_total,
 			n_tissue=n_tissue,
 			slide_id=pseudonym,
@@ -207,6 +245,7 @@ def _populate_group_metadata(
 		"slide_height": slide_h,
 		"tile_size": int(tile_size),
 		"pixel_format": "RGB",
+		"pixel_codec": pixel_codec,
 		"fill_value": int(FILL_VALUE),
 		"jpegxl_distance": float(jpegxl_distance),
 		"jpegxl_effort": int(jpegxl_effort),
@@ -240,15 +279,19 @@ def _populate_group_metadata(
 		if icc_bytes.size > 0:
 			_write_small_array(root, "icc_profile", icc_bytes)
 
-	# Initialise the pixels array (writes .zarray but no chunks)
-	# The numcodecs compressor handles the C-level JXL calls automatically during assignment
-	jpegxl_codec = Jpegxl(distance=jpegxl_distance, effort=jpegxl_effort, lossless=False)
+	# Initialise the pixels array (writes .zarray but no chunks).
+	# Pixel chunks remain sparse and chunk aligned; only the compressor changes.
+	pixel_compressor = _make_pixel_compressor(
+		pixel_codec,
+		jpegxl_distance=jpegxl_distance,
+		jpegxl_effort=jpegxl_effort,
+	)
 	root.create_array(
 		name="pixels",
 		shape=(slide_h, slide_w, 3),
 		dtype=np.uint8,
 		chunks=(tile_size, tile_size, 3),
-		compressor=jpegxl_codec,
+		compressor=pixel_compressor,
 		fill_value=FILL_VALUE,
 	)
 
