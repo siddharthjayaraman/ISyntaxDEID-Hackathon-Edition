@@ -1,0 +1,2 @@
+writer_mode,pixel_codec,threads,prep_seconds,writer_seconds,total_seconds,metadata_arrays_seconds,manual_pixels_parallel_seconds,zip_directory_seconds,atomic_replace_seconds,cleanup_seconds,output_size_mb,n_candidate_tiles,n_tissue_tiles,zarr_path
+manual_zarr_zip,jpegxl,8,0.5740831480070483,25.33791733099497,25.912000479002018,0.17431913399195764,22.168208545001107,2.623888052010443,4.5199994929134846e-05,0.32207544999255333,113.13648128509521,54116,22612,/home/sjayaram/run_report/benchmarks/manual_zarr_zip/testslide_manual_jpegxl/testslide_manual_jpegxl.zarr.zip
