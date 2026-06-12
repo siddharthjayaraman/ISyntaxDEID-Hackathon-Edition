@@ -374,7 +374,7 @@ def _write_pixels_parallel(
 		initializer=_worker_init,
 		# Note: Removed jpegxl_effort and distance as Zarr handles it intrinsically now
 		initargs=(slide_path, scratch_root, tile_size),
-		maxtasksperchild=256,
+		maxtasksperchild=None,
 	) as pool:
 		for _ in pool.imap_unordered(_worker_encode_tile, task_gen, chunksize=chunksize):
 			pass
