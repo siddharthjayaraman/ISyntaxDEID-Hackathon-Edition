@@ -232,6 +232,7 @@ def _populate_group_metadata(
 	tile_size: int,
 	jpegxl_distance: float,
 	jpegxl_effort: int,
+	pixel_codec: str,
 	n_total: int,
 	n_tissue: int,
 	slide_id: str,
