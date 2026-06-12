@@ -108,7 +108,11 @@ def _worker_init(
     _MW_TILE_SIZE = int(tile_size)
     _MW_SCRATCH_ROOT = Path(scratch_root)
     _MW_CHUNK_SEPARATOR = chunk_separator
-    _MW_COMPRESSOR = _make_pixel_compressor(pixel_codec, jpegxl_distance, jpegxl_effort)
+    _MW_COMPRESSOR = _make_pixel_compressor(
+        pixel_codec,
+        jpegxl_distance=jpegxl_distance,
+        jpegxl_effort=jpegxl_effort,
+    )
 
     atexit.register(_worker_cleanup)
 
@@ -301,7 +305,11 @@ def _create_metadata_arrays(
         compressor=Jpegxl(distance=jpegxl_distance, effort=jpegxl_effort, lossless=False),
     )
 
-    pixel_compressor = _make_pixel_compressor(pixel_codec, jpegxl_distance, jpegxl_effort)
+    pixel_compressor = _make_pixel_compressor(
+        pixel_codec,
+        jpegxl_distance=jpegxl_distance,
+        jpegxl_effort=jpegxl_effort,
+    )
 
     root.create_dataset(
         "pixels",
