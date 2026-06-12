@@ -1,14 +1,14 @@
-# Best branch thread scaling and throughput result
+# Thread matched and batch throughput result
 
 ## Branch context
 
-This benchmark was run on the branch with both speed optimisations stacked:
+This benchmark was run on:
 
 ```text
 feature/jpegxl-effort-speed-test
 ```
 
-Code changes included:
+The branch stacks two optimisation changes:
 
 ```python
 maxtasksperchild=None
@@ -20,7 +20,7 @@ and:
 jpegxl_effort=3
 ```
 
-The JPEG XL distance remained unchanged:
+The JPEG XL distance was unchanged:
 
 ```python
 jpegxl_distance=1.0
@@ -32,86 +32,74 @@ jpegxl_distance=1.0
 ~/run_report/data/testslide.isyntax
 ```
 
-## Original baseline
+## Thread matched comparison
 
-The original comparison baseline was the unchanged pipeline at 4 threads:
+This compares the original baseline and the optimised branch at the same thread count.
 
-```text
-total:      91.57 s
-zarr_write: 91.00 s
-ZIP size:   125M
-```
+| Threads per slide | Baseline total s | Optimised total s | Same-thread total speedup | Baseline Zarr write s | Optimised Zarr write s | Same-thread Zarr speedup | Parallel slides on 8 cores | Baseline batch slides/hour | Optimised batch slides/hour |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 314.39 | 109.87 | 2.861x | 313.97 | 109.31 | 2.872x | 8 | 91.61 | 262.13 |
+| 2 | 163.89 | 64.02 | 2.560x | 163.45 | 63.52 | 2.573x | 4 | 87.86 | 224.93 |
+| 4 | 90.82 | 40.92 | 2.219x | 90.38 | 40.39 | 2.238x | 2 | 79.28 | 175.95 |
+| 8 | 58.64 | 31.13 | 1.884x | 58.19 | 30.59 | 1.902x | 1 | 61.39 | 115.64 |
 
-## Single-slide thread scaling result
+## Correct interpretation
 
-| Threads per slide | Total s | Zarr write s | Wall clock | Max RSS MB | ZIP size |
-|---:|---:|---:|---:|---:|---:|
-| 1 | 109.87 | 109.31 | 1:50.36 | 10341.28 | 113M |
-| 2 | 64.02 | 63.52 | 1:04.49 | 9556.69 | 113M |
-| 4 | 40.92 | 40.39 | 0:41.44 | 8720.73 | 113M |
-| 8 | 31.13 | 30.59 | 0:31.66 | 6671.16 | 113M |
+The optimised branch improves runtime at every matched thread count.
 
-## Single-slide latency interpretation
-
-The fastest single-slide latency observed was:
+The strongest same-thread speedup is at one thread:
 
 ```text
-threads=8
-total:      31.13 s
-zarr_write: 30.59 s
-wall clock: 0:31.66
+1 thread:
+  total speedup:      2.861x
+  zarr_write speedup: 2.872x
 ```
 
-Compared with the original 4 thread baseline, this gives:
+The fastest single-slide latency is at eight threads:
 
 ```text
-total speedup:      2.94x
-zarr_write speedup: 2.98x
+8 threads:
+  total:      31.13 s
+  zarr_write: 30.59 s
 ```
 
-However, this is not the same as the best batch-processing strategy.
+However, eight threads per slide is not the best strategy for a large batch of slides on an eight core CPU.
 
-The thread scaling is clearly sublinear:
+## Batch throughput interpretation
+
+The project needs to process a very large number of images, so the more important production metric is:
 
 ```text
-1 to 2 threads: 1.72x
-1 to 4 threads: 2.69x
-1 to 8 threads: 3.53x
+slides per hour per machine
 ```
 
-So using all 8 cores for one slide improves latency, but it does not give 8x throughput.
-
-## Estimated batch throughput on an 8 core CPU
-
-Using the measured single-slide runtimes, the estimated slide throughput on an 8 core CPU is:
-
-| Batch strategy | Approx slides per hour | Interpretation |
-|---|---:|---|
-| 1 slide x 8 threads | 115.6 | Best single-slide latency |
-| 2 slides x 4 threads | 175.9 | Better batch throughput |
-| 4 slides x 2 threads | 224.9 | Better batch throughput |
-| 8 slides x 1 thread | 262.1 | Highest estimated throughput from this simple model |
-
-This means the best production strategy for millions of slides is probably not one slide using all CPU cores.
-
-For large-scale batch processing, the current benchmark suggests that running multiple slides concurrently with fewer threads per slide may process more slides per machine per hour.
-
-The practical deployment question should therefore be:
+not only:
 
 ```text
-Which combination of slides in parallel and threads per slide maximises slides per hour without exceeding memory and I/O limits?
+seconds per slide
 ```
 
-A direct batch benchmark should compare:
+Using the measured single-slide runtimes and assuming an eight core CPU, the best estimated batch throughput from this test is:
 
 ```text
-1 slide x 8 threads
-2 slides x 4 threads
-4 slides x 2 threads
-8 slides x 1 thread
+8 slides in parallel x 1 thread per slide:
+  262.13 slides/hour
 ```
 
-## Two optimisations that produced the current speedup
+The estimated batch-throughput ranking is:
+
+| Batch strategy on 8 cores | Estimated optimised throughput |
+|---|---:|
+| 8 slides x 1 thread | 262.13 slides/hour |
+| 4 slides x 2 threads | 224.93 slides/hour |
+| 2 slides x 4 threads | 175.95 slides/hour |
+| 1 slide x 8 threads | 115.64 slides/hour |
+
+This means that although eight threads gives the lowest latency for one slide, the current data suggests that large-scale batch conversion may be faster by running more slides concurrently with fewer threads per slide.
+
+This should be validated with true concurrent multi-slide runs because the estimate does not capture shared I/O contention, memory pressure, scheduler behaviour, or native library contention.
+
+## Two optimisations that led to the improvement
 
 ### 1. Disable worker recycling
 
@@ -129,7 +117,7 @@ maxtasksperchild=None
 
 This avoids repeated worker process restarts, repeated `ISyntaxWSI` initialisation, and repeated Zarr array reopening.
 
-At 4 threads, this reduced runtime from:
+At four threads, this reduced runtime from:
 
 ```text
 91.57 s to 79.82 s
@@ -155,32 +143,28 @@ The JPEG XL distance was kept unchanged:
 jpegxl_distance=1.0
 ```
 
-At 4 threads, after disabling worker recycling, this reduced runtime from:
+At four threads, after disabling worker recycling, this reduced runtime from:
 
 ```text
-79.82 s to 41.66 s
+79.82 s to 40.92 s
 ```
 
-At 8 threads, the combined result was:
-
-```text
-31.13 s total runtime
-```
-
-## Codec effort lower bound
+## JPEG XL effort lower bound
 
 The current repository validation restricts JPEG XL effort to values from 3 to 9.
 
-However, upstream JPEG XL tooling supports lower effort values. The lower bound of 3 therefore appears to be a conservative local guard rather than a demonstrated biological or AI-training constraint.
+Given the large improvement from effort 5 to effort 3, this lower bound should be treated as an open optimisation question rather than a fixed constraint.
 
-Because effort 3 produced the largest measured runtime improvement so far, efforts below 3 should be tested as additional extreme speed modes, for example:
+The next codec sweep should test lower effort values, for example:
 
 ```text
 jpegxl_effort=2
 jpegxl_effort=1
 ```
 
-Those lower efforts should not be adopted blindly. They should be evaluated with:
+Those modes should be evaluated as extreme speed modes, not adopted blindly.
+
+Recommended validation for lower effort values:
 
 ```text
 runtime
@@ -191,21 +175,36 @@ sample tile visual checks
 possibly downstream model sanity checks
 ```
 
-## Decision
+## Recommendation
 
-Report the current best single-slide latency proof of concept as:
+Report the current code-level proof of concept as:
 
 ```text
 maxtasksperchild=None
 jpegxl_effort=3
-threads=8
 ```
 
-Report the current batch-processing implication as:
+For single-slide latency, the fastest observed setting was:
 
 ```text
-For millions of slides, optimise slides per hour per machine, not only seconds per slide.
-The current scaling results suggest that multiple concurrent slides with fewer threads per slide may outperform one highly threaded slide.
+threads=8
+total=31.13 s
 ```
 
-This is a speed optimised proof of concept. It preserves the Zarr structure and validates with the repository inspection route, but codec output is not bitwise equivalent to the original effort 5 output.
+For batch processing on an eight core CPU, the best estimated strategy from this test was:
+
+```text
+8 concurrent slides x 1 thread per slide
+estimated throughput=262.13 slides/hour
+```
+
+The next production-oriented benchmark should directly test:
+
+```text
+1 slide x 8 threads
+2 slides x 4 threads
+4 slides x 2 threads
+8 slides x 1 thread
+```
+
+The current branch preserves the Zarr structure and validates with the repository inspection route, but codec output is not bitwise equivalent to the original effort 5 output.
