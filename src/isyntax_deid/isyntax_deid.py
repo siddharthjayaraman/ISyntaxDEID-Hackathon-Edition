@@ -92,7 +92,7 @@ class ISyntaxDeID:
 					slide_metadata=raw_metadata, candidate_coords=coords, tissue_status=status,
 					thumbnail=thumbnail, thumbnail_mpp=thumbnail_mpp, output_dir=slide_output_dir,
 					pseudonym=slide_id, tile_size=self.config.tile_size, jpegxl_distance=1.0,
-					n_workers=self.config.threads_per_slide,
+					jpegxl_effort=3, n_workers=self.config.threads_per_slide,
 				)
 
 			self.timings["total"] = sum(
