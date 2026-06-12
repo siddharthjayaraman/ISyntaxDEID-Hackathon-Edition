@@ -102,12 +102,12 @@ def _profile_event(profile_dir: Optional[Path | str], name: str, seconds: float,
 		handle.write(json.dumps(event, sort_keys=True) + "\n")
 
 
-def _profile_call(profile_dir: Optional[Path | str], name: str, func, *args, **kwargs):
+def _profile_call(profile_output_dir: Optional[Path | str], name: str, func, *args, **kwargs):
 	t0 = time.perf_counter()
 	try:
 		return func(*args, **kwargs)
 	finally:
-		_profile_event(profile_dir, name, time.perf_counter() - t0)
+		_profile_event(profile_output_dir, name, time.perf_counter() - t0)
 
 
 def write_slide_zarr(
