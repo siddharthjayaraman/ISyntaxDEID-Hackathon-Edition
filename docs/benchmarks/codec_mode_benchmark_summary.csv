@@ -1,0 +1,5 @@
+writer_mode,pixel_codec,threads,run_index,prep_seconds,zarr_write_seconds,total_seconds,output_size_mb,n_candidate_tiles,n_tissue_tiles,inspect_status,error_message,pixel_codec_attr,pixels_shape,pixels_chunks,slide_width,slide_height,zarr_path
+jpegxl,jpegxl,8,1,0.703846,31.083473,31.787319,112.023660,54116,22612,pass,,jpegxl,73222x37382x3,224x224x3,37382,73222,/home/sjayaram/run_report/benchmarks/codec_modes/jpegxl/testslide_jpegxl_run1.zarr.zip
+raw,raw,8,1,0.703846,32.788639,33.492485,3249.065886,54116,22612,pass,,raw,73222x37382x3,224x224x3,37382,73222,/home/sjayaram/run_report/benchmarks/codec_modes/raw/testslide_raw_run1.zarr.zip
+blosc_lz4,blosc_lz4,8,1,0.703846,33.650007,34.353853,2595.807545,54116,22612,pass,,blosc_lz4,73222x37382x3,224x224x3,37382,73222,/home/sjayaram/run_report/benchmarks/codec_modes/blosc_lz4/testslide_blosc_lz4_run1.zarr.zip
+blosc_zstd,blosc_zstd,8,1,0.703846,36.651957,37.355802,1895.887189,54116,22612,pass,,blosc_zstd,73222x37382x3,224x224x3,37382,73222,/home/sjayaram/run_report/benchmarks/codec_modes/blosc_zstd/testslide_blosc_zstd_run1.zarr.zip
